@@ -90,17 +90,27 @@ def faceoff(count: int, players: Callable[[], list[SushiGoClient]]):
     return wins
 
 
-# if __name__ == "__main__":
-#     player = Iter4()
-#     tourney_id = "tender-ramen-9555JGIC"
-#     player.run_tournament(tourney_id, "ChopstickHater")
+if __name__ == "__main__":
+    tourney_id = "tasty-nori-172423pD"
+    threads = []
+    for i in range(32):
+        player = Iter4()
+        t = threading.Thread(
+            target=player.run_tournament,
+            args=(tourney_id, f"ChopstickHater{i}"),
+            daemon=True,
+        )
+        t.start()
+        threads.append(t)
+    for thread in threads:
+        thread.join()
 
 # if __name__ == "__main__":
 #     player = Iter4()
 #     game_id = "sweet-salmon-31733vy0"
 #     player.run(game_id, "ChopstickHater")
 
-if __name__ == "__main__":
-    player = Iter4()
-    rejoin_token = "MOjkXBz7gUhg6nhksMPmUslVXou71fxg"
-    player.rejoin(rejoin_token)
+# if __name__ == "__main__":
+#     player = Iter4()
+#     rejoin_token = "MOjkXBz7gUhg6nhksMPmUslVXou71fxg"
+#     player.rejoin(rejoin_token)

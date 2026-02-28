@@ -171,6 +171,7 @@ class SushiGoClient:
                     # If we received our hand, play a card
                     if message.startswith("HAND") and self.state and self.state.hand:
                         self.play_turn()
+                self.send("LEAVE")
             elif response.startswith("ERROR"):
                 print(f"Failed to join: {response}")
 
@@ -335,6 +336,7 @@ class SushiGoClient:
                     self.play_turn()
 
             while True:
+                self.send("LEAVE")
                 m = self.receive_until(lambda m: m.startswith("TOURNAMENT_MATCH"))
                 token = m.split()[2]
                 if token == "BYE":
