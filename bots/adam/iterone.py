@@ -32,6 +32,9 @@ class OpponentState:
         self.hand = []
         self.played = []
 
+    def __repr__(self):
+        return str(self.hand) + str(self.played)
+
 
 class IterOne(SushiGoClient):
     name = "RANSACK"
@@ -137,6 +140,9 @@ class IterOne(SushiGoClient):
         opp_played,
         incoming,
     ) -> float:
+        # Chopsticks sucks!
+        if card == "Chopsticks":
+            return -100.0
 
         # ── Nigiri ──────────────────────────────────────────────────────
         if "Nigiri" in card:
@@ -253,22 +259,26 @@ class IterOne(SushiGoClient):
             current_hand = opp.hand
             if i == 0:
                 opp.hand_known = True
-                opp.hand = self.state.hand.copy()
+                opp.hand = self.hand_after
             else:
                 opp.hand = last_hand.copy()
-            if opp.hand_known:
-                last_hand = current_hand
+            last_hand = current_hand
+        print("\n\n")
+        print(self.opps)
 
     def handle_message(self, message: str):
         """Handle a message from the server."""
         if message.startswith("HAND"):
+            self.post_play()
             self.parse_hand(message)
         elif message.startswith("ROUND_START"):
             parts = message.split()
             if self.state:
                 self.state.round = int(parts[1])
                 self.state.turn = 1
-                self.state.played_cards = []
+                self.state.has_chopsticks = False
+                if not self.state.played_cards:
+                    self.state.played_cards = []
         elif message.startswith("PLAYED"):
             # Cards were revealed, next turn
             if self.state:
@@ -281,19 +291,23 @@ class IterOne(SushiGoClient):
                 card_name = card[1]
                 if player_name == self.name:
                     continue
+                opp = self.opp(player_name)
                 for card in card_name.split(","):
                     if card == "CHP":
                         continue
-                    self.opp(player_name).played.append(CARD_CODES[card])
+                    card = CARD_CODES[card]
+                    if card in opp.hand:
+                        opp.hand.remove(card)
+                    opp.played.append(card)
         elif message.startswith("ROUND_END"):
             # Round ended
             if self.state:
                 self.state.played_cards = [
-                    card for card in self.state.played_cards if card != "Pudding"
+                    card for card in self.state.played_cards if card == "Pudding"
                 ]
             if self.opps:
                 for opp in self.opps.values():
-                    opp.played = [card for card in opp.played if card != "Pudding"]
+                    opp.played = [card for card in opp.played if card == "Pudding"]
 
         elif message.startswith("GAME_END"):
             print("Game over!")

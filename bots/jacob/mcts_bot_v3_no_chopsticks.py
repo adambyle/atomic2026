@@ -27,33 +27,42 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 # ── Deck (standard Sushi Go, no extensions) ──────────────────────────────────
-FULL_DECK = Counter({
-    "Tempura":       14,
-    "Sashimi":       14,
-    "Dumpling":      14,
-    "Maki Roll (1)":  6,
-    "Maki Roll (2)": 12,
-    "Maki Roll (3)":  8,
-    "Salmon Nigiri": 10,
-    "Squid Nigiri":   5,
-    "Egg Nigiri":     5,
-    "Pudding":       10,
-    "Wasabi":         6,
-    "Chopsticks":     4,
-})
+FULL_DECK = Counter(
+    {
+        "Tempura": 14,
+        "Sashimi": 14,
+        "Dumpling": 14,
+        "Maki Roll (1)": 6,
+        "Maki Roll (2)": 12,
+        "Maki Roll (3)": 8,
+        "Salmon Nigiri": 10,
+        "Squid Nigiri": 5,
+        "Egg Nigiri": 5,
+        "Pudding": 10,
+        "Wasabi": 6,
+        "Chopsticks": 4,
+    }
+)
 
 CARDS_PER_PLAYER = {2: 10, 3: 9, 4: 8, 5: 7}
 
 ABBREV = {
-    "TMP": "Tempura",        "SSH": "Sashimi",
-    "DMP": "Dumpling",       "MK1": "Maki Roll (1)",
-    "MK2": "Maki Roll (2)", "MK3": "Maki Roll (3)",
-    "SAL": "Salmon Nigiri", "SQD": "Squid Nigiri",
-    "EGG": "Egg Nigiri",    "PUD": "Pudding",
-    "WAS": "Wasabi",        "CHP": "Chopsticks",
+    "TMP": "Tempura",
+    "SSH": "Sashimi",
+    "DMP": "Dumpling",
+    "MK1": "Maki Roll (1)",
+    "MK2": "Maki Roll (2)",
+    "MK3": "Maki Roll (3)",
+    "SAL": "Salmon Nigiri",
+    "SQD": "Squid Nigiri",
+    "EGG": "Egg Nigiri",
+    "PUD": "Pudding",
+    "WAS": "Wasabi",
+    "CHP": "Chopsticks",
 }
 
 MAKI_PIPS = {"Maki Roll (1)": 1, "Maki Roll (2)": 2, "Maki Roll (3)": 3}
+
 
 def normalize(raw: str) -> str:
     s = raw.strip()
@@ -66,6 +75,7 @@ def normalize(raw: str) -> str:
 
 
 # ── Scoring engine ────────────────────────────────────────────────────────────
+
 
 def count_maki(tableau: list) -> int:
     c = Counter(tableau)
@@ -135,8 +145,9 @@ def score_pudding_endgame(pudding_counts: list, player_count: int) -> list:
     return scores
 
 
-def total_score_for_state(tableaux: list, puddings: list,
-                           player_count: int, end_of_game: bool) -> list:
+def total_score_for_state(
+    tableaux: list, puddings: list, player_count: int, end_of_game: bool
+) -> list:
     """Full score for each player given their tableaux and pudding counts."""
     n = len(tableaux)
     scores = [score_tableau_no_maki(t) for t in tableaux]
@@ -153,17 +164,25 @@ def total_score_for_state(tableaux: list, puddings: list,
 
 # ── Greedy heuristic (used for rollouts and as standalone fallback) ───────────
 
+
 def has_unused_wasabi(tableau: list) -> bool:
     wasabi = tableau.count("Wasabi")
     nigiri = sum(1 for c in tableau if "Nigiri" in c)
     return wasabi > nigiri
 
 
-def heuristic_card_value(card: str, tableau: list, puddings: int,
-                          my_maki: int, opp_makis: list,
-                          player_count: int, turn: int,
-                          cards_per_hand: int, hand: list,
-                          opp_puds: list) -> float:
+def heuristic_card_value(
+    card: str,
+    tableau: list,
+    puddings: int,
+    my_maki: int,
+    opp_makis: list,
+    player_count: int,
+    turn: int,
+    cards_per_hand: int,
+    hand: list,
+    opp_puds: list,
+) -> float:
     counts = Counter(tableau)
     hand_size = len(hand)
     turns_left = cards_per_hand - turn - 1
@@ -238,17 +257,35 @@ def heuristic_card_value(card: str, tableau: list, puddings: int,
     return 0.5
 
 
-def greedy_pick(hand: list, tableau: list, puddings: int,
-                my_maki: int, opp_makis: list, opp_puds: list,
-                player_count: int, turn: int, cards_per_hand: int) -> int:
+def greedy_pick(
+    hand: list,
+    tableau: list,
+    puddings: int,
+    my_maki: int,
+    opp_makis: list,
+    opp_puds: list,
+    player_count: int,
+    turn: int,
+    cards_per_hand: int,
+) -> int:
     """Pure greedy card picker — used in MCTS rollouts."""
     if not hand:
         return 0
     best_val = -999
     best_idx = 0
     for i, card in enumerate(hand):
-        v = heuristic_card_value(card, tableau, puddings, my_maki, opp_makis,
-                                 player_count, turn, cards_per_hand, hand, opp_puds)
+        v = heuristic_card_value(
+            card,
+            tableau,
+            puddings,
+            my_maki,
+            opp_makis,
+            player_count,
+            turn,
+            cards_per_hand,
+            hand,
+            opp_puds,
+        )
         if v > best_val:
             best_val = v
             best_idx = i
@@ -257,18 +294,20 @@ def greedy_pick(hand: list, tableau: list, puddings: int,
 
 # ── Simulation state (lightweight, copyable) ─────────────────────────────────
 
+
 @dataclass
 class SimState:
     """
     Lightweight game state for MCTS simulation.
     player_idx=0 is always 'us' from our perspective.
     """
+
     player_count: int
     cards_per_hand: int
-    tableaux: list          # list of lists, one per player
-    puddings: list          # list of ints, one per player
-    hands: list             # list of lists (cards currently held)
-    turn: int               # turns elapsed this round
+    tableaux: list  # list of lists, one per player
+    puddings: list  # list of ints, one per player
+    hands: list  # list of lists (cards currently held)
+    turn: int  # turns elapsed this round
     round_num: int
     my_idx: int = 0
 
@@ -307,8 +346,9 @@ class SimState:
         self.rotate_hands()
 
     def score_current(self, end_of_game: bool) -> list:
-        return total_score_for_state(self.tableaux, self.puddings,
-                                     self.player_count, end_of_game)
+        return total_score_for_state(
+            self.tableaux, self.puddings, self.player_count, end_of_game
+        )
 
     def clone(self):
         return SimState(
@@ -325,11 +365,12 @@ class SimState:
 
 # ── MCTS ─────────────────────────────────────────────────────────────────────
 
+
 class MCTSNode:
     __slots__ = ["move", "parent", "children", "visits", "value", "untried"]
 
     def __init__(self, move=None, parent=None, untried_moves=None):
-        self.move = move          # card index we played to reach this node
+        self.move = move  # card index we played to reach this node
         self.parent = parent
         self.children: list = []
         self.visits: int = 0
@@ -369,10 +410,21 @@ def rollout(state: SimState, end_of_game: bool) -> float:
             tableau = s.tableaux[i]
             pud = s.puddings[i]
             my_maki = count_maki(tableau)
-            opp_makis = [count_maki(s.tableaux[j]) for j in range(s.player_count) if j != i]
+            opp_makis = [
+                count_maki(s.tableaux[j]) for j in range(s.player_count) if j != i
+            ]
             opp_puds = [s.puddings[j] for j in range(s.player_count) if j != i]
-            idx = greedy_pick(hand, tableau, pud, my_maki, opp_makis, opp_puds,
-                              s.player_count, s.turn, s.cards_per_hand)
+            idx = greedy_pick(
+                hand,
+                tableau,
+                pud,
+                my_maki,
+                opp_makis,
+                opp_puds,
+                s.player_count,
+                s.turn,
+                s.cards_per_hand,
+            )
             plays.append(idx)
         s.apply_plays(plays)
 
@@ -383,8 +435,9 @@ def rollout(state: SimState, end_of_game: bool) -> float:
     return float(my_score - avg_opp)
 
 
-def mcts_search(root_state: SimState, time_budget_s: float = 0.95,
-                end_of_game: bool = False) -> int:
+def mcts_search(
+    root_state: SimState, time_budget_s: float = 0.95, end_of_game: bool = False
+) -> int:
     """
     Run MCTS from root_state.
     Returns the best move (card index) for the current player (my_idx=0).
@@ -422,8 +475,9 @@ def mcts_search(root_state: SimState, time_budget_s: float = 0.95,
 
             # Untried moves for child = indices into the hand AFTER this play
             next_hand = state.hands[state.my_idx]
-            child = MCTSNode(move=my_move, parent=node,
-                             untried_moves=list(range(len(next_hand))))
+            child = MCTSNode(
+                move=my_move, parent=node, untried_moves=list(range(len(next_hand)))
+            )
             node.children.append(child)
             node = child
 
@@ -466,16 +520,29 @@ def _build_plays(state: SimState, my_move: int) -> list:
             tableau = state.tableaux[i]
             pud = state.puddings[i]
             my_maki = count_maki(tableau)
-            opp_makis = [count_maki(state.tableaux[j])
-                         for j in range(state.player_count) if j != i]
+            opp_makis = [
+                count_maki(state.tableaux[j])
+                for j in range(state.player_count)
+                if j != i
+            ]
             opp_puds = [state.puddings[j] for j in range(state.player_count) if j != i]
-            idx = greedy_pick(hand, tableau, pud, my_maki, opp_makis, opp_puds,
-                              state.player_count, state.turn, state.cards_per_hand)
+            idx = greedy_pick(
+                hand,
+                tableau,
+                pud,
+                my_maki,
+                opp_makis,
+                opp_puds,
+                state.player_count,
+                state.turn,
+                state.cards_per_hand,
+            )
             plays.append(idx)
     return plays
 
 
 # ── Real game knowledge tracker ───────────────────────────────────────────────
+
 
 @dataclass
 class PlayerInfo:
@@ -492,10 +559,10 @@ class GameKnowledge:
         self.cards_per_hand = 10
         self.round_num = 1
         self.turn = 0
-        self.seats: list = []           # ordered seat list (clockwise)
-        self.players: dict = {}         # name → PlayerInfo
+        self.seats: list = []  # ordered seat list (clockwise)
+        self.players: dict = {}  # name → PlayerInfo
         self.my_hand: list = []
-        self.known_hands: dict = {}     # name → list or None
+        self.known_hands: dict = {}  # name → list or None
         self.prev_hand: list = []
 
     def my_info(self):
@@ -558,7 +625,10 @@ class GameKnowledge:
             puddings.append(self.players[seat_name].puddings)
             if seat_name == self.my_name:
                 hands.append(list(self.my_hand))
-            elif seat_name in self.known_hands and self.known_hands[seat_name] is not None:
+            elif (
+                seat_name in self.known_hands
+                and self.known_hands[seat_name] is not None
+            ):
                 hands.append(list(self.known_hands[seat_name]))
             else:
                 # Sample cards from pool for this opponent's hand
@@ -581,10 +651,11 @@ class GameKnowledge:
 
 # ── Protocol ──────────────────────────────────────────────────────────────────
 
+
 def parse_hand(msg: str) -> list:
-    payload = msg[len("HAND "):].strip()
+    payload = msg[len("HAND ") :].strip()
     cards = []
-    for m in re.finditer(r'(\d+):(.*?)(?=\s+\d+:|$)', payload):
+    for m in re.finditer(r"(\d+):(.*?)(?=\s+\d+:|$)", payload):
         cards.append(normalize(m.group(2).strip()))
     return cards
 
@@ -594,7 +665,7 @@ def parse_played(msg: str) -> dict:
     Parse PLAYED message into {player_name: [card, ...]} (list to handle chopsticks).
     Normal turn: one card. Chopsticks turn: two cards (space-separated after the colon).
     """
-    payload = msg[len("PLAYED "):].strip()
+    payload = msg[len("PLAYED ") :].strip()
     result = {}
     for part in payload.split(";"):
         part = part.strip()
@@ -610,12 +681,21 @@ def parse_played(msg: str) -> dict:
             # Try 1-word match, then 2-word, then 3-word (longest known card name is 3 words)
             matched = False
             for length in [3, 2, 1]:
-                candidate = " ".join(tokens[i:i+length])
+                candidate = " ".join(tokens[i : i + length])
                 normed = normalize(candidate)
                 if normed in {  # only accept known card names
-                    "Tempura","Sashimi","Dumpling","Maki Roll (1)","Maki Roll (2)",
-                    "Maki Roll (3)","Salmon Nigiri","Squid Nigiri","Egg Nigiri",
-                    "Pudding","Wasabi","Chopsticks"
+                    "Tempura",
+                    "Sashimi",
+                    "Dumpling",
+                    "Maki Roll (1)",
+                    "Maki Roll (2)",
+                    "Maki Roll (3)",
+                    "Salmon Nigiri",
+                    "Squid Nigiri",
+                    "Egg Nigiri",
+                    "Pudding",
+                    "Wasabi",
+                    "Chopsticks",
                 }:
                     cards.append(normed)
                     i += length
@@ -630,7 +710,7 @@ def parse_played(msg: str) -> dict:
 
 
 def parse_json_scores(msg: str) -> dict:
-    m = re.search(r'\{[^}]+\}', msg)
+    m = re.search(r"\{[^}]+\}", msg)
     if m:
         try:
             return json.loads(m.group(0))
@@ -641,6 +721,7 @@ def parse_json_scores(msg: str) -> dict:
 
 # ── Bot ───────────────────────────────────────────────────────────────────────
 
+
 class MCTSBotv4:
     def __init__(self, host: str, port: int, time_budget: float = 0.95):
         self.host = host
@@ -650,6 +731,7 @@ class MCTSBotv4:
         self.sock_file = None
         self.gk = GameKnowledge()
         self.rejoin_token = ""
+        self.name = "jacob"
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -744,7 +826,9 @@ class MCTSBotv4:
             self.connect()
             self.gk.my_name = name
             self.send(f"JOIN {game_id} {name}")
-            resp = self.recv_until(lambda m: m.startswith("WELCOME") or m.startswith("ERROR"))
+            resp = self.recv_until(
+                lambda m: m.startswith("WELCOME") or m.startswith("ERROR")
+            )
             if not resp.startswith("WELCOME"):
                 print(f"Failed to join: {resp}")
                 return
@@ -775,7 +859,7 @@ class MCTSBotv4:
                 elif msg.startswith("ROUND_START"):
                     rn = int(msg.split()[1])
                     self.gk.reset_for_round(rn)
-                    is_last_round = (rn == 3)
+                    is_last_round = rn == 3
 
                 elif msg.startswith("HAND"):
                     hand = parse_hand(msg)
@@ -853,7 +937,9 @@ class MCTSBotv4:
                         t = self.gk.players.get(name)
                         if t and "Chopsticks" in t.tableau:
                             t.tableau.remove("Chopsticks")
-                            print(f"[WARN] Cleared stale Chopsticks from tableau after E007")
+                            print(
+                                f"[WARN] Cleared stale Chopsticks from tableau after E007"
+                            )
 
                 elif msg.startswith("GAME_END"):
                     scores = parse_json_scores(msg)
@@ -867,7 +953,9 @@ class MCTSBotv4:
             print("\nDisconnecting...")
         except Exception as e:
             print(f"Error: {e}")
-            import traceback; traceback.print_exc()
+            import traceback
+
+            traceback.print_exc()
         finally:
             if self.sock:
                 self.sock.close()

@@ -61,6 +61,7 @@ class SushiGoClient:
     name: str | None = None
 
     def __init__(self, host: str, port: int):
+        self.hand_after = []
         self.host = host
         self.port = port
         self.sock: Optional[socket.socket] = None
@@ -144,7 +145,10 @@ class SushiGoClient:
         self.send(f"CHOPSTICKS {index1} {index2}")
         if self.state:
             self.state.hand.append("Chopsticks")
-            self.state.played_cards.remove("Chopsticks")
+            self.state.played_cards = [
+                card for card in self.state.played_cards if card != "Chopsticks"
+            ]
+            self.state.has_chopsticks = False
         return self.receive()
 
     def parse_hand(self, message: str):
@@ -180,7 +184,6 @@ class SushiGoClient:
         """
         # Simple priority-based strategy
         priority = [
-            "Chopsticks",  # Play 2 cards next turn
             "Squid Nigiri",  # 3 points, or 9 with wasabi
             "Salmon Nigiri",  # 2 points, or 6 with wasabi
             "Maki Roll (3)",  # 3 maki rolls
@@ -192,6 +195,7 @@ class SushiGoClient:
             "Egg Nigiri",  # 1 point, or 3 with wasabi
             "Pudding",  # End game scoring
             "Maki Roll (1)",  # 1 maki roll
+            "Chopsticks",  # Play 2 cards next turn
         ]
 
         # If we have wasabi, prioritize nigiri
@@ -234,38 +238,34 @@ class SushiGoClient:
             pass
         return True
 
-    def post_play(self):
-        pass
-
     def play_turn(self):
         """Play a single turn."""
         if not self.state or not self.state.hand:
             return
 
-        if self.state.has_chopsticks:
-            card_index_1 = self.choose_card(self.state.hand)
-            card_index_2 = random.choice(
-                [idx for idx in range(len(self.state.hand)) if idx != card_index_1]
-            )
-            played_card_1 = self.state.hand[card_index_1]
-            played_card_2 = self.state.hand[card_index_2]
-            response = self.play_chopsticks(card_index_1, card_index_2)
-            if response.startswith("OK"):
-                if self.state:
-                    self.state.played_cards.extend([played_card_1, played_card_2])
-                    self.state.hand.remove(played_card_1)
-                    self.state.hand.remove(played_card_2)
-                    self.state.hand.append("Chopsticks")
-        else:
-            card_index = self.choose_card(self.state.hand)
-            played_card = self.state.hand[card_index]
-            response = self.play_card(card_index)
-            if response.startswith("OK"):
-                if self.state:
-                    self.state.played_cards.append(played_card)
-                    self.state.hand.remove(played_card)
-
-        self.post_play()
+        # if self.state.has_chopsticks:
+        #     card_index_1 = self.choose_card(self.state.hand)
+        #     card_index_2 = random.choice(
+        #         [idx for idx in range(len(self.state.hand)) if idx != card_index_1]
+        #     )
+        #     played_card_1 = self.state.hand[card_index_1]
+        #     played_card_2 = self.state.hand[card_index_2]
+        #     response = self.play_chopsticks(card_index_1, card_index_2)
+        #     if response.startswith("OK"):
+        #         if self.state:
+        #             self.state.played_cards.extend([played_card_1, played_card_2])
+        #             self.state.hand.remove(played_card_1)
+        #             self.state.hand.remove(played_card_2)
+        #             self.state.hand.append("Chopsticks")
+        # else:
+        card_index = self.choose_card(self.state.hand)
+        played_card = self.state.hand[card_index]
+        response = self.play_card(card_index)
+        if response.startswith("OK"):
+            if self.state:
+                self.state.played_cards.append(played_card)
+                self.state.hand.remove(played_card)
+        self.hand_after = self.state.hand.copy()
 
     def run(self, game_id: str, player_name: str):
         """Main game loop."""

@@ -3,8 +3,9 @@ import threading
 
 import requests
 
-from bots.adam.claudetwo import ClaudeTwo
+from bots.adam.itermine import IterMine
 from bots.adam.iterone import IterOne
+from bots.adam.itertwo import IterTwo
 from bots.sushi_go_client import SushiGoClient
 
 HOST = "localhost"
@@ -77,4 +78,4 @@ def run_game(players: list[SushiGoClient]):
 
 
 if __name__ == "__main__":
-    run_game([MCTSBot(HOST, PORT), SushiGoClient(HOST, PORT)])
+    run_game([SushiGoClient(HOST, PORT), SushiGoClient(HOST, PORT), IterMine()])
