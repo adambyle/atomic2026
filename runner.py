@@ -1,17 +1,25 @@
 import socket
 import threading
 
+import requests
+
 from bots.adam.my_bot import MyBot
 from bots.sushi_go_client import SushiGoClient
 
 HOST = "localhost"
 PORT = 7878
+GAMES_URL = "http://localhost:8080/api/games"
 
 print(f"Connecting to {HOST}:{PORT}...")
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.connect((HOST, PORT))
 sock_file = sock.makefile("r", encoding="utf-8", errors="replace")
 print("Connected!")
+
+
+def create_game(player_count: int):
+    response = requests.post(GAMES_URL, json={"max_players": player_count})
+    print(response.text)
 
 
 def send(cmd: str):
@@ -49,6 +57,7 @@ def newest_game() -> str:
 
 
 def run_game(players: list[SushiGoClient]):
+    create_game(len(players))
     game = newest_game()
     threads = []
     for i, player in enumerate(players):
