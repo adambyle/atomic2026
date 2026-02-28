@@ -3,7 +3,8 @@ import threading
 
 import requests
 
-from bots.adam.my_bot import MyBot
+from bots.adam.claudetwo import ClaudeTwo
+from bots.adam.iterone import IterOne
 from bots.sushi_go_client import SushiGoClient
 
 HOST = "localhost"
@@ -61,9 +62,12 @@ def run_game(players: list[SushiGoClient]):
     game = newest_game()
     threads = []
     for i, player in enumerate(players):
+        name = player.name
+        if not name:
+            name = f"Player{i}"
         t = threading.Thread(
             target=player.run,
-            args=(game, f"Player{i}"),
+            args=(game, name),
             daemon=True,
         )
         t.start()
