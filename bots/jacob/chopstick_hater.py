@@ -390,8 +390,8 @@ def mcts_search(root_state: SimState, time_budget_s: float = 0.95,
     Returns the best move (card index) for the current player (my_idx=0).
     """
     my_hand = root_state.hands[root_state.my_idx]
-    if len(my_hand) == 1:
-        return 0  # No choice
+    if len(my_hand) <= 1:
+        return 0  # No choice (also guards empty hand)
 
     root = MCTSNode(untried_moves=list(range(len(my_hand))))
     deadline = time.monotonic() + time_budget_s
@@ -402,11 +402,8 @@ def mcts_search(root_state: SimState, time_budget_s: float = 0.95,
         node = root
         state = root_state.clone()
 
-        # CRITICAL FIX: advance state as we traverse the tree so that
-        # by the time we expand, state matches the depth of `node`.
         while node.is_fully_expanded() and node.children:
             node = node.best_child()
-            # Replay this node's move onto state so state stays in sync
             if not state.is_round_over():
                 plays = _build_plays(state, node.move)
                 state.apply_plays(plays)
@@ -416,14 +413,13 @@ def mcts_search(root_state: SimState, time_budget_s: float = 0.95,
             my_move = random.choice(node.untried)
             node.untried.remove(my_move)
 
-            # Simulate one full turn: our move + greedy opponent moves
             plays = _build_plays(state, my_move)
             state.apply_plays(plays)
 
-            # Untried moves for child = indices into the hand AFTER this play
             next_hand = state.hands[state.my_idx]
+            # Guard: next_hand may be empty if round just ended in simulation
             child = MCTSNode(move=my_move, parent=node,
-                             untried_moves=list(range(len(next_hand))))
+                             untried_moves=list(range(len(next_hand))) if next_hand else [])
             node.children.append(child)
             node = child
 
@@ -443,7 +439,6 @@ def mcts_search(root_state: SimState, time_budget_s: float = 0.95,
         return 0
     best = max(root.children, key=lambda n: n.visits)
     return best.move
-
 
 def _build_plays(state: SimState, my_move: int) -> list:
     """
@@ -599,8 +594,14 @@ def parse_hand(msg: str) -> list:
 def parse_played(msg: str) -> dict:
     """
     Parse PLAYED message into {player_name: [card, ...]} (list to handle chopsticks).
-    Normal turn: one card. Chopsticks turn: two cards (space-separated after the colon).
+    Normal turn: one card. Chopsticks turn: two cards.
+    Handles both space-separated (CHP MK2) and comma-separated (CHP,MK2) formats.
     """
+    KNOWN_CARDS = {
+        "Tempura", "Sashimi", "Dumpling", "Maki Roll (1)", "Maki Roll (2)",
+        "Maki Roll (3)", "Salmon Nigiri", "Squid Nigiri", "Egg Nigiri",
+        "Pudding", "Wasabi", "Chopsticks"
+    }
     payload = msg[len("PLAYED "):].strip()
     result = {}
     for part in payload.split(";"):
@@ -608,28 +609,21 @@ def parse_played(msg: str) -> dict:
         if ":" not in part:
             continue
         name, _, raw = part.partition(":")
-        # Cards may be space-separated full names — but each card name can contain spaces.
-        # We normalize each token and collect known card names.
+        raw = raw.replace(",", " ") # Normalize commas to spaces so both formats parse identically
         tokens = raw.strip().split()
         cards = []
         i = 0
         while i < len(tokens):
-            # Try 1-word match, then 2-word, then 3-word (longest known card name is 3 words)
             matched = False
             for length in [3, 2, 1]:
                 candidate = " ".join(tokens[i:i+length])
                 normed = normalize(candidate)
-                if normed in {  # only accept known card names
-                    "Tempura","Sashimi","Dumpling","Maki Roll (1)","Maki Roll (2)",
-                    "Maki Roll (3)","Salmon Nigiri","Squid Nigiri","Egg Nigiri",
-                    "Pudding","Wasabi","Chopsticks"
-                }:
+                if normed in KNOWN_CARDS:
                     cards.append(normed)
                     i += length
                     matched = True
                     break
             if not matched:
-                # Unknown token — skip
                 i += 1
         if cards:
             result[name.strip()] = cards
@@ -897,7 +891,7 @@ def main():
     if len(sys.argv) != 5:
         print("Usage: python mcts_bot.py <host> <port> <game_id> <player_name>")
         sys.exit(1)
-    bot = MCTSBot(sys.argv[1], int(sys.argv[2]))
+    bot = ChopstickHater(sys.argv[1], int(sys.argv[2]))
     bot.run(sys.argv[3], sys.argv[4])
 
 
