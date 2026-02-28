@@ -148,8 +148,7 @@ def score_pudding_endgame(pudding_counts: list, player_count: int) -> list:
 
 
 def total_score_for_state(
-    tableaux: list, puddings: list, player_count: int, end_of_game: bool
-) -> list:
+    tableaux: list, puddings: list, player_count: int, end_of_game: bool) -> list:
     """Full score for each player given their tableaux and pudding counts."""
     n = len(tableaux)
     scores = [score_tableau_no_maki(t) for t in tableaux]
@@ -438,7 +437,7 @@ def rollout(state: SimState, end_of_game: bool) -> float:
 
 
 def mcts_search(
-    root_state: SimState, time_budget_s: float = 0.95, end_of_game: bool = False
+    root_state: SimState, time_budget: float = 0.24, end_of_game: bool = False
 ) -> int:
     """
     Run MCTS from root_state.
@@ -449,7 +448,7 @@ def mcts_search(
         return 0  # No choice (also guards empty hand)
 
     root = MCTSNode(untried_moves=list(range(len(my_hand))))
-    deadline = time.monotonic() + time_budget_s
+    deadline = time.monotonic() + time_budget
     iterations = 0
 
     while time.monotonic() < deadline:
@@ -728,9 +727,9 @@ def parse_json_scores(msg: str) -> dict:
 
 # ── Bot ───────────────────────────────────────────────────────────────────────
 
-
+# Allowed 240ms to thinking
 class ChopstickHater(SushiGoClient):
-    def __init__(self, host: str, port: int, time_budget: float = 0.4):
+    def __init__(self, host: str, port: int, time_budget: float = 0.24):
         super().__init__(host, port)
         self.time_budget = time_budget
         self.sock = None
