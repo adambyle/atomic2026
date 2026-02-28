@@ -60,8 +60,10 @@ class SushiGoClient:
 
     name: str | None = None
     winner: str | None
+    rejoin_code: str
 
     def __init__(self, host: str, port: int):
+        self.rejoin_code = ""
         self.hand_after = []
         self.winner = None
         self.host = host
@@ -126,12 +128,51 @@ class SushiGoClient:
 
         if response.startswith("WELCOME"):
             parts = response.split()
+            print("REJOIN CODE", parts[3])
             self.state = GameState(game_id=parts[1], player_id=int(parts[2]), hand=[])
             return True
         elif response.startswith("ERROR"):
             print(f"Failed to join: {response}")
             return False
         return False
+
+    def join_tournament(self, tourney_id: str, player_name: str) -> bool:
+        """Join a tournament."""
+        self.send(f"TOURNEY {tourney_id} {player_name}")
+        response = self.receive_until(
+            lambda line: line.startswith("TOURN") or line.startswith("ERROR")
+        )
+
+        while True:
+            m = self.receive_until(lambda m: m.startswith("TOURNAMENT_MATCH"))
+            token = m.split()[2]
+            if token == "BYE":
+                continue
+            self.send(f"TJOIN {token}")
+            response = self.receive_until(
+                lambda line: line.startswith("WELCOME") or line.startswith("ERROR")
+            )
+            if response.startswith("WELCOME"):
+                parts = response.split()
+                self.state = GameState(
+                    game_id=parts[1], player_id=int(parts[2]), hand=[]
+                )
+
+                # Signal ready
+                self.signal_ready()
+
+                # Main game loop
+                running = True
+                while running:
+                    # Check for incoming messages
+                    message = self.receive()
+                    running = self.handle_message(message)
+
+                    # If we received our hand, play a card
+                    if message.startswith("HAND") and self.state and self.state.hand:
+                        self.play_turn()
+            elif response.startswith("ERROR"):
+                print(f"Failed to join: {response}")
 
     def signal_ready(self):
         """Signal that we're ready to start."""
@@ -271,6 +312,108 @@ class SushiGoClient:
                 self.state.played_cards.append(played_card)
                 self.state.hand.remove(played_card)
         self.hand_after = self.state.hand.copy()
+
+    def run_tournament_rejoin(self, rejoin_token: str):
+        """Main game loop."""
+        try:
+            self.connect()
+
+            self.send(f"REJOIN {rejoin_token}")
+
+            m = self.receive_until(lambda m: m.startswith("REJOINED"))
+            parts = m.split()
+            self.state = GameState(game_id=parts[1], player_id=int(parts[2]), hand=[])
+
+            running = True
+            while running:
+                # Check for incoming messages
+                message = self.receive()
+                running = self.handle_message(message)
+
+                # If we received our hand, play a card
+                if message.startswith("HAND") and self.state and self.state.hand:
+                    self.play_turn()
+
+            while True:
+                m = self.receive_until(lambda m: m.startswith("TOURNAMENT_MATCH"))
+                token = m.split()[2]
+                if token == "BYE":
+                    continue
+                self.send(f"TJOIN {token}")
+                response = self.receive_until(
+                    lambda line: line.startswith("WELCOME") or line.startswith("ERROR")
+                )
+                if response.startswith("WELCOME"):
+                    parts = response.split()
+                    self.state = GameState(
+                        game_id=parts[1], player_id=int(parts[2]), hand=[]
+                    )
+
+                    # Signal ready
+                    self.signal_ready()
+
+                    # Main game loop
+                    running = True
+                    while running:
+                        # Check for incoming messages
+                        message = self.receive()
+                        running = self.handle_message(message)
+
+                        # If we received our hand, play a card
+                        if (
+                            message.startswith("HAND")
+                            and self.state
+                            and self.state.hand
+                        ):
+                            self.play_turn()
+                elif response.startswith("ERROR"):
+                    print(f"Failed to join: {response}")
+
+        except KeyboardInterrupt:
+            print("\nDisconnecting...")
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            self.disconnect()
+
+    def run_tournament(self, tourney_id: str, player_name: str):
+        """Main game loop."""
+        try:
+            self.connect()
+
+            if not self.join_tournament(tourney_id, player_name):
+                return
+        except Exception:
+            pass
+
+    def rejoin(self, rejoin_token: str):
+        """Main game loop."""
+        try:
+            self.connect()
+
+            self.send(f"REJOIN {rejoin_token}")
+
+            m = self.receive_until(lambda m: m.startswith("REJOINED"))
+            parts = m.split()
+            self.state = GameState(game_id=parts[1], player_id=int(parts[2]), hand=[])
+
+            # Main game loop
+            running = True
+            while running:
+                # Check for incoming messages
+                message = self.receive()
+                running = self.handle_message(message)
+
+                # If we received our hand, play a card
+                if message.startswith("HAND") and self.state and self.state.hand:
+                    self.play_turn()
+
+        except KeyboardInterrupt:
+            print("\nDisconnecting...")
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            self.disconnect()
 
     def run(self, game_id: str, player_name: str):
         """Main game loop."""

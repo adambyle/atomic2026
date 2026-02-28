@@ -5,11 +5,10 @@ from typing import Callable
 import requests
 
 from bots.adam.iterfour import Iter4
-from bots.adam.itermine import IterMine
-from bots.adam.iterone import IterOne
-from bots.adam.itertwo import IterTwo
+from bots.jacob.chopstick_hater import ChopstickHater
 from bots.sushi_go_client import SushiGoClient
 
+# HOST = "10.8.1.191"
 HOST = "localhost"
 PORT = 7878
 GAMES_URL = "http://localhost:8080/api/games"
@@ -91,14 +90,17 @@ def faceoff(count: int, players: Callable[[], list[SushiGoClient]]):
     return wins
 
 
+# if __name__ == "__main__":
+#     player = Iter4()
+#     tourney_id = "tender-ramen-9555JGIC"
+#     player.run_tournament(tourney_id, "ChopstickHater")
+
+# if __name__ == "__main__":
+#     player = Iter4()
+#     game_id = "sweet-salmon-31733vy0"
+#     player.run(game_id, "ChopstickHater")
+
 if __name__ == "__main__":
-    wins = faceoff(
-        10,
-        lambda: [
-            SushiGoClient(HOST, PORT),
-            SushiGoClient(HOST, PORT),
-            Iter4(),
-            IterOne(),
-        ],
-    )
-    print(wins)
+    player = Iter4()
+    rejoin_token = "MOjkXBz7gUhg6nhksMPmUslVXou71fxg"
+    player.rejoin(rejoin_token)

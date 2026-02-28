@@ -1,11 +1,11 @@
 from bots.adam.iterone import IterOne, OpponentState
 
-HOST = "localhost"
+HOST = "10.8.1.191"
 PORT = 7878
 
 
 class Iter4(IterOne):
-    name = "ITER4"
+    name = "ChopstickHater"
 
     def choose_card(self, hand: list[str]) -> int:
         if not self.state:
