@@ -466,9 +466,10 @@ def _build_plays(state: SimState, my_move: int) -> list:
             tableau = state.tableaux[i]
             pud = state.puddings[i]
             my_maki = count_maki(tableau)
+            n_actual = len(state.tableaux)  # may be < player_count if seats incomplete
             opp_makis = [count_maki(state.tableaux[j])
-                         for j in range(state.player_count) if j != i]
-            opp_puds = [state.puddings[j] for j in range(state.player_count) if j != i]
+                         for j in range(n_actual) if j != i]
+            opp_puds = [state.puddings[j] for j in range(n_actual) if j != i]
             idx = greedy_pick(hand, tableau, pud, my_maki, opp_makis, opp_puds,
                               state.player_count, state.turn, state.cards_per_hand)
             plays.append(idx)
@@ -549,6 +550,13 @@ class GameKnowledge:
         pool_list = [c for c, cnt in pool.items() for _ in range(cnt)]
         random.shuffle(pool_list)
 
+        # Pad seats to player_count in case JOINED messages arrived before READY
+        # and some opponents were never registered.
+        while len(self.seats) < n:
+            phantom = f"__phantom_{len(self.seats)}__"
+            self.seats.append(phantom)
+            self.players[phantom] = PlayerInfo(phantom)
+
         # Build seat-ordered hands
         hands = []
         tableaux = []
@@ -577,7 +585,6 @@ class GameKnowledge:
             round_num=self.round_num,
             my_idx=my_idx,
         )
-
 
 # ── Protocol ──────────────────────────────────────────────────────────────────
 
@@ -650,7 +657,7 @@ class ChopstickHater:
         self.sock_file = None
         self.gk = GameKnowledge()
         self.rejoin_token = ""
-        self.name = "ChopstickHater"
+        self.name = "Chopstick Hater"
 
     def connect(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
