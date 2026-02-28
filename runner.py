@@ -77,10 +77,4 @@ def run_game(players: list[SushiGoClient]):
 
 
 if __name__ == "__main__":
-    run_game(
-        [
-            SushiGoClient(HOST, PORT),
-            SushiGoClient(HOST, PORT),
-            IterOne(),
-        ]
-    )
+    run_game([MCTSBot(HOST, PORT), SushiGoClient(HOST, PORT)])
