@@ -1,8 +1,10 @@
 import socket
 import threading
+from typing import Callable
 
 import requests
 
+from bots.adam.iterfour import Iter4
 from bots.adam.itermine import IterMine
 from bots.adam.iterone import IterOne
 from bots.adam.itertwo import IterTwo
@@ -77,5 +79,26 @@ def run_game(players: list[SushiGoClient]):
         thread.join()
 
 
+def faceoff(count: int, players: Callable[[], list[SushiGoClient]]):
+    wins = {}
+    for _ in range(count):
+        round_players = players()
+        run_game(round_players)
+        winner = round_players[0].winner
+        if winner not in wins:
+            wins[winner] = 0
+        wins[winner] += 1
+    return wins
+
+
 if __name__ == "__main__":
-    run_game([SushiGoClient(HOST, PORT), SushiGoClient(HOST, PORT), IterMine()])
+    wins = faceoff(
+        10,
+        lambda: [
+            SushiGoClient(HOST, PORT),
+            SushiGoClient(HOST, PORT),
+            Iter4(),
+            IterOne(),
+        ],
+    )
+    print(wins)

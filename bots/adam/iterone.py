@@ -41,6 +41,7 @@ class IterOne(SushiGoClient):
     opps: dict[str, OpponentState] | None
 
     def __init__(self):
+        self.winner = None
         self.opps = None
         super().__init__(HOST, PORT)
 
@@ -310,6 +311,9 @@ class IterOne(SushiGoClient):
                     opp.played = [card for card in opp.played if card == "Pudding"]
 
         elif message.startswith("GAME_END"):
+            parts = message.split()
+            winner = parts[2].split(":")[1]
+            self.winner = winner
             print("Game over!")
             return False
         elif message.startswith("WAITING"):

@@ -59,9 +59,11 @@ class SushiGoClient:
     """A client for playing Sushi Go."""
 
     name: str | None = None
+    winner: str | None
 
     def __init__(self, host: str, port: int):
         self.hand_after = []
+        self.winner = None
         self.host = host
         self.port = port
         self.sock: Optional[socket.socket] = None
@@ -231,6 +233,9 @@ class SushiGoClient:
             if self.state:
                 self.state.played_cards = []
         elif message.startswith("GAME_END"):
+            parts = message.split()
+            winner = parts[2].split(":")[1]
+            self.winner = winner
             print("Game over!")
             return False
         elif message.startswith("WAITING"):
