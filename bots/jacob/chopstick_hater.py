@@ -26,6 +26,8 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
 
+from ..sushi_go_client import SushiGoClient
+
 # ── Deck (standard Sushi Go, no extensions) ──────────────────────────────────
 FULL_DECK = Counter(
     {
@@ -727,10 +729,9 @@ def parse_json_scores(msg: str) -> dict:
 # ── Bot ───────────────────────────────────────────────────────────────────────
 
 
-class ChopstickHater:
+class ChopstickHater(SushiGoClient):
     def __init__(self, host: str, port: int, time_budget: float = 0.4):
-        self.host = host
-        self.port = port
+        super().__init__(host, port)
         self.time_budget = time_budget
         self.sock = None
         self.sock_file = None
